@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JKP Sales Performance Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+  *{box-sizing:border-box}
+
+  :root{
+    --jb-red:#d6001c;
+    --jb-red-dark:#b40018;
+    --jb-gold:#f4c542;
+    --jb-gold-soft:#fff2bf;
+    --jb-bg:#f5f6fa;
+    --panel:#ffffff;
+    --text:#1f2937;
+    --muted:#667085;
+    --line:#e7e7e7;
+    --shadow:0 10px 26px rgba(0,0,0,.10);
+    --soft-shadow:0 4px 14px rgba(0,0,0,.08);
+  }
+
+  body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:
+      radial-gradient(circle at top right, rgba(255,223,110,.20), transparent 18%),
+      radial-gradient(circle at top left, rgba(214,0,28,.10), transparent 20%),
+      linear-gradient(180deg,#f7f8fb 0%, #eef1f6 100%);
+    color:var(--text);
+  }
+
+  .header{
+    background:
+      linear-gradient(135deg,#ff304f 0%, #d6001c 45%, #b80018 100%);
+    color:#fff;
+    padding:18px;
+    font-size:26px;
+    font-weight:800;
+    text-align:center;
+    position:sticky;
+    top:0;
+    z-index:2000;
+    letter-spacing:.4px;
+    box-shadow:0 4px 16px rgba(0,0,0,.18);
+    overflow:hidden;
+  }
+  .header::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,0) 36%);
+    pointer-events:none;
+  }
+
+  .dashboard{
+    max-width:2400px;
+    margin:auto;
+    padding:14px;
+  }
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-bottom:14px;
+    background:rgba(255,255,255,.78);
+    backdrop-filter: blur(10px);
+    border:1px solid rgba(255,255,255,.7);
+    padding:12px;
+    border-radius:16px;
+    box-shadow:var(--soft-shadow);
+  }
+
+  select,button{
+    padding:10px 14px;
+    border:none;
+    border-radius:12px;
+    font-weight:800;
+    cursor:pointer;
+    transition:.22s ease;
+  }
+
+  select{
+    border:1px solid #d8dbe2;
+    background:
+      linear-gradient(180deg,#ffffff,#f7f8fb);
+    color:#333;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9);
+  }
+
+  button:hover{
+    transform:translateY(-1px);
+    box-shadow:0 8px 18px rgba(0,0,0,.12);
+  }
+
+  .btn{
+    color:#fff;
+    background:linear-gradient(180deg,#ff3f5d,#d6001c);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 10px rgba(214,0,28,.25);
+  }
+  .btn.secondary{
+    background:linear-gradient(180deg,#8a93a3,#6c757d);
+  }
+  .btn.green{
+    background:linear-gradient(180deg,#31c978,#198754);
+  }
+  .btn.blue{
+    background:linear-gradient(180deg,#3b8cff,#0d6efd);
+  }
+  .btn.orange{
+    background:linear-gradient(180deg,#ff9b4c,#fd7e14);
+  }
+
+  .month-report-banner{
+    display:none;
+    background:linear-gradient(180deg,#fff9df,#fff3bf);
+    border:1px solid #f5db7a;
+    color:#7a5900;
+    padding:12px 14px;
+    border-radius:14px;
+    font-weight:800;
+    margin-bottom:12px;
+    box-shadow:0 3px 10px rgba(0,0,0,.05);
+  }
+
+  .focus-banner{
+    display:none;
+    padding:14px 16px;
+    border-radius:16px;
+    font-weight:800;
+    margin-bottom:12px;
+    box-shadow:0 6px 18px rgba(0,0,0,.08);
+    border:2px solid transparent;
+    font-size:15px;
+  }
+
+  .focus-sales{
+    background:linear-gradient(90deg,#e8f1ff,#f5f9ff);
+    color:#0b5394;
+    border-color:#7bb0ff;
+  }
+  .focus-dt{
+    background:linear-gradient(90deg,#eafaf0,#f6fff8);
+    color:#166534;
+    border-color:#74d99d;
+  }
+  .focus-party{
+    background:linear-gradient(90deg,#f5edff,#fcf8ff);
+    color:#6b21a8;
+    border-color:#d1a7ff;
+  }
+  .focus-ops{
+    background:linear-gradient(90deg,#fff4e8,#fffaf3);
+    color:#9a3412;
+    border-color:#ffbe80;
+  }
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    gap:14px;
+    margin-bottom:14px;
+  }
+
+  .card{
+    position:relative;
+    border-radius:20px;
+    padding:16px 16px 18px;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,.60);
+    transition:.25s ease;
+    overflow:hidden;
+    min-height:150px;
+    cursor:pointer;
+    backdrop-filter: blur(4px);
+  }
+
+  .card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 14px 30px rgba(0,0,0,.15);
+  }
+
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,0) 34%);
+    pointer-events:none;
+  }
+
+  .card::after{
+    content:"";
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:7px;
+    opacity:.98;
+  }
+
+  .card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:10px;
+    position:relative;
+    z-index:2;
+  }
+
+  .card-badge{
+    font-size:11px;
+    font-weight:800;
+    padding:6px 10px;
+    border-radius:999px;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    display:inline-block;
+    box-shadow:0 2px 6px rgba(0,0,0,.08);
+  }
+
+  .card-icon{
+    width:44px;
+    height:44px;
+    border-radius:15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    font-weight:700;
+    box-shadow:0 6px 12px rgba(0,0,0,.12);
+    flex-shrink:0;
+  }
+
+  .card-title{
+    margin:0;
+    font-size:13px;
+    font-weight:800;
+    opacity:.90;
+    position:relative;
+    z-index:2;
+  }
+
+  .card-value{
+    margin-top:10px;
+    font-size:30px;
+    font-weight:900;
+    letter-spacing:.2px;
+    line-height:1.1;
+    position:relative;
+    z-index:2;
+  }
+
+  .card-sub{
+    margin-top:6px;
+    font-size:12px;
+    font-weight:800;
+    opacity:.92;
+    position:relative;
+    z-index:2;
+  }
+
+  .trend-up{color:#198754}
+  .trend-down{color:#dc3545}
+  .trend-flat{color:#6c757d}
+
+  .sales-card{
+    background:linear-gradient(145deg,#eef6ff,#dbeafe 55%,#c8defd 100%);
+    color:#0f172a;
+  }
+  .sales-card::after{background:linear-gradient(90deg,#1d4ed8,#60a5fa)}
+  .sales-card .card-badge{background:#eff6ff;color:#1d4ed8}
+  .sales-card .card-icon{background:linear-gradient(180deg,#3b82f6,#1d4ed8);color:#fff}
+
+  .sales-growth-card{
+    background:linear-gradient(145deg,#effaff,#dff4ff 55%,#cbeeff 100%);
+    color:#0f172a;
+  }
+  .sales-growth-card::after{background:linear-gradient(90deg,#0284c7,#38bdf8)}
+  .sales-growth-card .card-badge{background:#f0f9ff;color:#0369a1}
+  .sales-growth-card .card-icon{background:linear-gradient(180deg,#38bdf8,#0284c7);color:#fff}
+
+  .dt-card{
+    background:linear-gradient(145deg,#effdf4,#dcfce7 55%,#c8f6d8 100%);
+    color:#052e16;
+  }
+  .dt-card::after{background:linear-gradient(90deg,#16a34a,#4ade80)}
+  .dt-card .card-badge{background:#f0fdf4;color:#15803d}
+  .dt-card .card-icon{background:linear-gradient(180deg,#22c55e,#16a34a);color:#fff}
+
+  .dt-growth-card{
+    background:linear-gradient(145deg,#ecfff8,#d1fae5 55%,#bdf5d9 100%);
+    color:#052e16;
+  }
+  .dt-growth-card::after{background:linear-gradient(90deg,#10b981,#34d399)}
+  .dt-growth-card .card-badge{background:#ecfdf5;color:#059669}
+  .dt-growth-card .card-icon{background:linear-gradient(180deg,#34d399,#10b981);color:#fff}
+
+  .party-card{
+    background:linear-gradient(145deg,#faf3ff,#f3e8ff 55%,#ead8ff 100%);
+    color:#3b0764;
+  }
+  .party-card::after{background:linear-gradient(90deg,#9333ea,#c084fc)}
+  .party-card .card-badge{background:#faf5ff;color:#7e22ce}
+  .party-card .card-icon{background:linear-gradient(180deg,#a855f7,#9333ea);color:#fff}
+
+  .amount-card{
+    background:linear-gradient(145deg,#fff8ef,#ffedd5 55%,#ffd9a8 100%);
+    color:#7c2d12;
+  }
+  .amount-card::after{background:linear-gradient(90deg,#f97316,#fb923c)}
+  .amount-card .card-badge{background:#fff7ed;color:#ea580c}
+  .amount-card .card-icon{background:linear-gradient(180deg,#fb923c,#f97316);color:#fff}
+
+  .card.active-focus{
+    outline:3px solid #ffcc33;
+    box-shadow:0 0 0 4px rgba(255,204,51,.25), 0 14px 30px rgba(0,0,0,.16);
+  }
+
+  .panel{
+    background:rgba(255,255,255,.92);
+    border-radius:16px;
+    overflow:auto;
+    box-shadow:var(--shadow);
+    margin-bottom:14px;
+    position:relative;
+    scroll-margin-top:110px;
+    border:1px solid rgba(255,255,255,.65);
+  }
+
+  table{
+    width:100%;
+    min-width:3500px;
+    border-collapse:separate;
+    border-spacing:0;
+    font-size:12px;
+  }
+
+  th,td{
+    border:1px solid #e5e7eb;
+    padding:7px;
+    text-align:center;
+    vertical-align:middle;
+    white-space:nowrap;
+    transition:background .2s ease, opacity .2s ease, box-shadow .2s ease, transform .2s ease, color .2s ease;
+  }
+
+  th{
+    background:
+      linear-gradient(180deg,#ff4d62 0%, #d6001c 60%, #ba0018 100%);
+    color:#fff;
+    position:sticky;
+    top:0;
+    z-index:5;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+  }
+
+  .group-head{
+    font-size:13px;
+    font-weight:800;
+    letter-spacing:.2px;
+  }
+
+  .yellow{background:#fffaf0}
+  .orange{background:#fff7ef}
+  .blue{background:#f4f9ff}
+  .purple{background:#fbf6ff}
+  .greenSec{background:#f4fff7}
+  .pinkSec{background:#fff7fb}
+
+  input{
+    width:95px;
+    padding:6px;
+    border:1px solid #d1d5db;
+    border-radius:9px;
+    text-align:center;
+    font-weight:800;
+    background:#fff;
+    color:#222;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.04);
+  }
+
+  .focus-input{width:220px}
+
+  .good{color:#198754;font-weight:800}
+  .bad{color:#dc3545;font-weight:800}
+
+  .sticky-month{
+    position:sticky !important;
+    left:0;
+    z-index:12;
+    min-width:90px;
+    font-weight:800;
+    box-shadow:2px 0 8px rgba(0,0,0,.08);
+  }
+
+  thead .sticky-month{
+    z-index:20 !important;
+    background:
+      linear-gradient(180deg,#ff425a 0%, #c4001a 100%) !important;
+    color:#fff !important;
+  }
+
+  tbody .sticky-month{
+    background:linear-gradient(180deg,#fff8d7,#fff3bf) !important;
+  }
+
+  .report-table{
+    min-width:1600px !important;
+  }
+
+  .dim-col{
+    opacity:.18;
+    filter:grayscale(.15);
+  }
+
+  .focus-col{
+    opacity:1 !important;
+    transform:scale(1.005);
+    box-shadow:inset 0 0 0 2px rgba(255,193,7,.80);
+    color:#000 !important;
+    font-weight:800;
+  }
+
+  .focus-sales-col{
+    background:#eef5ff !important;
+    color:#000 !important;
+  }
+
+  .focus-dt-col{
+    background:#eefcf3 !important;
+    color:#000 !important;
+  }
+
+  .focus-party-col{
+    background:#f8f1ff !important;
+    color:#000 !important;
+  }
+
+  .focus-ops-col{
+    background:#fff6ec !important;
+    color:#000 !important;
+  }
+
+  .focus-col span,
+  .focus-col div,
+  .focus-col td{
+    color:#000 !important;
+  }
+
+  .focus-col input{
+    color:#000 !important;
+    font-weight:800;
+    background:#fff !important;
+    border:1px solid #999;
+  }
+
+  .report-row{
+    background:linear-gradient(90deg,#fffef8,#ffffff);
+  }
+
+  .charts{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  .chart-box{
+    background:rgba(255,255,255,.95);
+    border-radius:16px;
+    padding:12px;
+    height:340px;
+    box-shadow:var(--shadow);
+    transition:.25s ease;
+    border:1px solid rgba(255,255,255,.75);
+    position:relative;
+    overflow:hidden;
+  }
+  .chart-box::before{
+    content:"";
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:7px;
+    background:linear-gradient(90deg,var(--jb-red),var(--jb-gold));
+  }
+
+  .chart-box h4{
+    margin:0 0 10px 0;
+    color:var(--jb-red);
+    font-size:14px;
+    font-weight:800;
+  }
+
+  .chart-box.focus-chart{
+    outline:3px solid #ffcc33;
+    transform:translateY(-2px);
+    box-shadow:0 0 0 4px rgba(255,204,51,.22), 0 12px 28px rgba(0,0,0,.16);
+  }
+
+  .chart-box.dim-chart{
+    opacity:.18;
+    transform:scale(.98);
+  }
+
+  canvas{
+    width:100% !important;
+    height:calc(100% - 20px) !important;
+  }
+
+  .notes-wrap{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:12px;
+    margin-top:12px;
+  }
+
+  .notes-panel{
+    background:rgba(255,255,255,.96);
+    border-radius:16px;
+    padding:16px;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,.75);
+  }
+
+  .notes-panel h3{
+    margin:0 0 6px 0;
+    color:var(--jb-red);
+  }
+
+  .notes-panel p{
+    margin:0 0 12px 0;
+    color:#666;
+    font-size:13px;
+  }
+
+  .factor-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+  }
+
+  .factor-box{
+    background:linear-gradient(180deg,#ffffff,#fafbfe);
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:12px;
+    box-shadow:0 2px 6px rgba(0,0,0,.04);
+  }
+
+  .factor-box label{
+    display:block;
+    font-weight:800;
+    margin-bottom:8px;
+    color:#b00018;
+  }
+
+  textarea{
+    width:100%;
+    border:1px solid #d1d5db;
+    border-radius:12px;
+    padding:10px;
+    resize:vertical;
+    min-height:90px;
+    font-family:Arial,sans-serif;
+    font-size:13px;
+    background:#fff;
+  }
+
+  .summary-editor-toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    padding:10px;
+    margin-bottom:8px;
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:12px;
+  }
+  .summary-editor-toolbar select,
+  .summary-editor-toolbar button{
+    padding:8px 10px;
+    border-radius:9px;
+    font-weight:800;
+  }
+  .summary-editor-toolbar select{
+    border:1px solid #d1d5db;
+    background:#fff;
+  }
+  .summary-editor-toolbar button{
+    border:1px solid #d1d5db;
+    background:#fff;
+    color:#333;
+  }
+  .summary-editor-toolbar button:hover{background:#ffe5d0}
+  .summary-editor-toolbar button{padding:7px 10px;border-radius:8px}
+  .summary-editor-toolbar select{padding:7px 9px;border-radius:8px;font-weight:600}
+  .summary-editor-toolbar .toolbar-sep{width:1px;height:28px;background:#d9dde5;margin:0 2px}
+  .summary-editor-toolbar .tool-icon{min-width:36px}
+  .summary-editor{
+    width:100%;
+    min-height:420px;
+    border:1px solid #d1d5db;
+    border-radius:12px;
+    padding:12px;
+    background:#fff;
+    overflow:auto;
+    outline:none;
+    line-height:1.5;
+    font-family:Arial,sans-serif;
+    font-size:14px;
+  }
+  .summary-editor:empty:before{
+    content:attr(data-placeholder);
+    color:#9ca3af;
+    pointer-events:none;
+  }
+  .summary-editor ul,.summary-editor ol{padding-left:28px}
+  .summary-editor li{margin:4px 0}
+
+  .summary-attachments{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .attachment-card{border:1px solid #d8d8d8;border-radius:12px;padding:14px;background:#fafafa}
+  .attachment-help{font-size:12px;color:#666;margin:6px 0 10px}
+  .summary-image-preview{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:12px}
+  .summary-image-item{position:relative;border:1px solid #ddd;border-radius:10px;overflow:hidden;background:#fff}
+  .summary-image-item img{width:100%;height:110px;object-fit:cover;display:block}
+  .summary-image-remove{position:absolute;top:5px;right:5px;border:0;border-radius:50%;width:25px;height:25px;cursor:pointer;background:#fff;color:#c00;font-weight:700}
+  .summary-image-name{font-size:10px;padding:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .presentation-link-row{display:flex;gap:8px;align-items:center}
+  .presentation-link-row input{flex:1;min-width:0;padding:10px;border:1px solid #ccc;border-radius:8px}
+  .link-status{font-size:12px;color:#198754;margin-top:7px;min-height:16px}
+  @media(max-width:800px){.summary-attachments{grid-template-columns:1fr}.presentation-link-row{flex-direction:column;align-items:stretch}}
+
+  @media(max-width:1400px){
+    .cards{grid-template-columns:repeat(4,1fr)}
+    .charts{grid-template-columns:repeat(2,1fr)}
+    .notes-wrap{grid-template-columns:1fr}
+  }
+
+  @media(max-width:900px){
+    .cards{grid-template-columns:repeat(2,1fr)}
+    .charts{grid-template-columns:1fr}
+    .factor-grid{grid-template-columns:1fr}
+  }
+
+  @media print{
+    body{background:#fff}
+    .header,.toolbar,.cards,.panel,.charts,.month-report-banner,.focus-banner{display:none !important}
+    .notes-wrap{display:block}
+    .notes-panel{
+      box-shadow:none;
+      border:1px solid #ccc;
+      margin-bottom:12px;
+      break-inside:avoid;
+    }
+    textarea{border:1px solid #999}
+  }
+</style>
+</head>
+<body>
+
+<div class="header">📊 JKP AND DINE-IN/TAKE OUT SALES PERFORMANCE DASHBOARD</div>
+
+<div class="dashboard">
+
+  <div class="toolbar">
+    <select id="monthFilter" onchange="updateDashboard()">
+      <option value="ALL">ALL MONTHS</option>
+      <option value="0">January</option>
+      <option value="1">February</option>
+      <option value="2">March</option>
+      <option value="3">April</option>
+      <option value="4">May</option>
+      <option value="5">June</option>
+      <option value="6">July</option>
+      <option value="7">August</option>
+      <option value="8">September</option>
+      <option value="9">October</option>
+      <option value="10">November</option>
+      <option value="11">December</option>
+    </select>
+
+    <button class="btn secondary" onclick="resetFilter()">Reset Filter</button>
+    <button class="btn orange" onclick="resetFocus()">Reset Focus</button>
+    <button class="btn green" onclick="exportToExcel()">Export to Excel</button>
+    <button class="btn blue" onclick="printNotes()">Print Factors / Summary</button>
+    <button class="btn" onclick="clearSavedNotes()">Clear Saved Notes</button>
+  </div>
+
+  <div class="month-report-banner" id="monthReportBanner"></div>
+  <div class="focus-banner" id="focusBanner"></div>
+
+  <div class="cards">
+    <div class="card sales-card" id="cardSalesTY" onclick="focusSection('sales')">
+      <div class="card-top">
+        <span class="card-badge">Sales</span>
+        <div class="card-icon">💰</div>
+      </div>
+      <div class="card-title">Total TY Sales</div>
+      <div class="card-value" id="salesTY">₱0</div>
+      <div class="card-sub" id="salesTYSub">vs LY --</div>
+    </div>
+
+    <div class="card sales-card" id="cardSalesLY" onclick="focusSection('sales')">
+      <div class="card-top">
+        <span class="card-badge">Last Year</span>
+        <div class="card-icon">📘</div>
+      </div>
+      <div class="card-title">Total LY Sales</div>
+      <div class="card-value" id="salesLY">₱0</div>
+      <div class="card-sub">Reference baseline</div>
+    </div>
+
+    <div class="card sales-growth-card" id="cardSalesGrowth" onclick="focusSection('sales')">
+      <div class="card-top">
+        <span class="card-badge">Growth</span>
+        <div class="card-icon">📈</div>
+      </div>
+      <div class="card-title">Total Sales Growth %</div>
+      <div class="card-value" id="totalGrowth">0%</div>
+      <div class="card-sub" id="totalGrowthTrend">--</div>
+    </div>
+
+    <div class="card dt-card" id="cardDtTY" onclick="focusSection('dt')">
+      <div class="card-top">
+        <span class="card-badge">Dine/Take</span>
+        <div class="card-icon">🍔</div>
+      </div>
+      <div class="card-title">Dine/Take TY Total</div>
+      <div class="card-value" id="dtTYTotal">₱0</div>
+      <div class="card-sub" id="dtTYSub">vs LY --</div>
+    </div>
+
+    <div class="card dt-card" id="cardDtLY" onclick="focusSection('dt')">
+      <div class="card-top">
+        <span class="card-badge">Dine/Take LY</span>
+        <div class="card-icon">🥡</div>
+      </div>
+      <div class="card-title">Dine/Take LY Total</div>
+      <div class="card-value" id="dtLYTotal">₱0</div>
+      <div class="card-sub">Reference baseline</div>
+    </div>
+
+    <div class="card dt-growth-card" id="cardDtGrowth" onclick="focusSection('dt')">
+      <div class="card-top">
+        <span class="card-badge">Growth</span>
+        <div class="card-icon">🟢</div>
+      </div>
+      <div class="card-title">Dine/Take Growth %</div>
+      <div class="card-value" id="dtGrowthTotal">0%</div>
+      <div class="card-sub" id="dtGrowthTrend">--</div>
+    </div>
+
+    <div class="card party-card" id="cardParty" onclick="focusSection('party')">
+      <div class="card-top">
+        <span class="card-badge">Party</span>
+        <div class="card-icon">🎉</div>
+      </div>
+      <div class="card-title">Total Party TY</div>
+      <div class="card-value" id="partyTYCard">0</div>
+      <div class="card-sub" id="partySub">vs LY --</div>
+    </div>
+
+    <div class="card amount-card" id="cardAmount" onclick="focusSection('ops')">
+      <div class="card-top">
+        <span class="card-badge">Sales Amount</span>
+        <div class="card-icon">🧾</div>
+      </div>
+      <div class="card-title">Total Sales Amount</div>
+      <div class="card-value" id="formulaTotal">₱0</div>
+      <div class="card-sub">Computed sales amount</div>
+    </div>
+  </div>
+
+  <div class="panel" id="tablePanel">
+    <div style="margin:0 0 12px;padding:12px 14px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-weight:700;line-height:1.45;">
+      🎉 <b>2026 Party Capacity:</b> Every Friday, Saturday and Sunday is counted from the actual 2026 calendar.
+      Each of those days has <b>5 party slots by default</b>. Available Slots = Friday Slots + Saturday Slots + Sunday Slots.
+      Party Occupancy = Actual Party TY ÷ Available Party Slots × 100.
+    </div>
+    <table id="dashboardTable">
+      <thead>
+        <tr>
+          <th rowspan="2" class="sticky-month col-month">Month</th>
+
+          <th colspan="3" class="group-head col-sales">Sales Comparison</th>
+          <th colspan="16" class="group-head col-party">Party Comparison + 2026 Fri/Sat/Sun Capacity</th>
+          <th colspan="3" class="group-head col-dt">Dine-In / Take-Out Sales Comparison</th>
+          <th rowspan="2" class="col-ops">Focus SS Target</th>
+          <th rowspan="2" class="col-ops">TC</th>
+          <th rowspan="2" class="col-ops">Total Qty Sold</th>
+          <th rowspan="2" class="col-ops">Sales Qty / Day</th>
+          <th rowspan="2" class="col-ops">Price</th>
+          <th rowspan="2" class="col-ops">No. of Days</th>
+          <th rowspan="2" class="col-ops">Blocked Days</th>
+          <th rowspan="2" class="col-ops">Party Occupancy %</th>
+          <th rowspan="2" class="col-ops">SR %</th>
+          <th rowspan="2" class="col-ops">Sales Amount</th>
+        </tr>
+        <tr>
+          <th class="col-sales">TY Sales</th>
+          <th class="col-sales">LY Sales</th>
+          <th class="col-sales">Growth %</th>
+
+          <th class="col-party">Party TY</th>
+          <th class="col-party">Party LY</th>
+          <th class="col-party">Party %</th>
+          <th class="col-party">WE TY</th>
+          <th class="col-party">WD TY</th>
+          <th class="col-party">WE LY</th>
+          <th class="col-party">WD LY</th>
+          <th class="col-party">Friday Days</th>
+          <th class="col-party">Saturday Days</th>
+          <th class="col-party">Sunday Days</th>
+          <th class="col-party">Party Days</th>
+          <th class="col-party">Party Slots / Day</th>
+          <th class="col-party">Available Slots</th>
+           <th class="col-party">Fri Slots</th>
+           <th class="col-party">Sat Slots</th>
+           <th class="col-party">Sun Slots</th>
+
+          <th class="col-dt">Dine/Take TY</th>
+          <th class="col-dt">Dine/Take LY</th>
+          <th class="col-dt">Dine/Take Growth %</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="charts" id="chartsWrap">
+    <div class="chart-box" id="salesChartBox">
+      <h4>Sales Comparison</h4>
+      <canvas id="salesChart"></canvas>
+    </div>
+    <div class="chart-box" id="dtChartBox">
+      <h4>Dine-In / Take-Out</h4>
+      <canvas id="dtChart"></canvas>
+    </div>
+    <div class="chart-box" id="partyChartBox">
+      <h4>Party Comparison</h4>
+      <canvas id="partyChart"></canvas>
+    </div>
+    <div class="chart-box" id="srChartBox">
+      <h4>SR / Operations</h4>
+      <canvas id="srChart"></canvas>
+    </div>
+  </div>
+
+  <div class="notes-wrap">
+    <div class="notes-panel">
+      <h3>📝 Factors Affecting Sales</h3>
+      <p>Type your reporting notes per month below. These notes are auto-saved in your browser.</p>
+      <div class="factor-grid" id="factorGrid"></div>
+    </div>
+
+    <div class="notes-panel summary-box">
+      <h3>📌 Summary / Action Plan</h3>
+      <p>Use this for final reporting highlights, action plans, recovery plans, or key store observations.</p>
+      <div class="summary-editor-toolbar" aria-label="Word-style summary formatting tools">
+        <select id="summaryFont" title="Font" onchange="applySummaryFont()">
+          <option value="Arial">Arial</option>
+          <option value="Calibri">Calibri</option>
+          <option value="Aptos">Aptos</option>
+          <option value="Verdana">Verdana</option>
+          <option value="Tahoma">Tahoma</option>
+          <option value="Georgia">Georgia</option>
+          <option value="Times New Roman">Times New Roman</option>
+        </select>
+        <select id="summaryFontSize" title="Font size" onchange="applySummaryFontSize()">
+          <option value="12px">12</option>
+          <option value="14px" selected>14</option>
+          <option value="16px">16</option>
+          <option value="18px">18</option>
+          <option value="20px">20</option>
+          <option value="24px">24</option>
+          <option value="28px">28</option>
+        </select>
+        <span class="toolbar-sep"></span>
+        <button class="tool-icon" type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('bold')" title="Bold"><b>B</b></button>
+        <button class="tool-icon" type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('italic')" title="Italic"><i>I</i></button>
+        <button class="tool-icon" type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('underline')" title="Underline"><u>U</u></button>
+        <span class="toolbar-sep"></span>
+        <button type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('insertUnorderedList')" title="Bullet list">• Bullets</button>
+        <button type="button" onmousedown="keepSummarySelection(event)" onclick="insertDashItem()" title="Dash item">— Dash</button>
+        <button type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('insertOrderedList')" title="Numbered list">1. List</button>
+        <span class="toolbar-sep"></span>
+        <button class="tool-icon" type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('justifyLeft')" title="Align left">☰</button>
+        <button type="button" onmousedown="keepSummarySelection(event)" onclick="formatSummary('undo')" title="Undo">↶</button>
+      </div>
+      <div id="summaryAction" class="summary-editor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Type summary / action plan here..."></div>
+
+      <div class="summary-attachments">
+        <div class="attachment-card">
+          <strong>🖼️ Add Supporting Images</strong>
+          <p class="attachment-help">Upload screenshots, photos, charts, or evidence for your summary. Images are saved in this browser.</p>
+          <input type="file" id="summaryImages" accept="image/*" multiple>
+          <div id="summaryImagePreview" class="summary-image-preview"></div>
+        </div>
+
+        <div class="attachment-card">
+          <strong>🔗 TY Presentation Link</strong>
+          <p class="attachment-help">Paste your Google Drive, PowerPoint, OneDrive, SharePoint, or presentation link.</p>
+          <div class="presentation-link-row">
+            <input type="url" id="tyPresentationLink" placeholder="https://..." autocomplete="off">
+            <button type="button" class="btn blue" onclick="openTYPresentation()">Open TY Presentation</button>
+          </div>
+          <div id="tyPresentationStatus" class="link-status"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fullMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const formatter = new Intl.NumberFormat('en-PH');
+
+let data = months.map((m,i)=>( {
+  month:m,
+  salesTY:[446658.92,187165.18,485162.50,446802.67,441697.32,401010.72,450695.75,544391.07,0,0,0,0][i],
+  salesLY:[450177.58,317298.00,399304.46,277100.00,313274.12,353423.21,409231.26,502950.88,494278.59,494983.91,0,0][i],
+  dtTY:[9467174.99,0,10418664.8,9730898.09,9299170.79,9121500.83,10308278.3,10186441.055,0,0,0,0][i],
+  dtLY:[9247887.05,8370566.26,4649571.42,9947775.43,9706448.83,9247887.05,8519924.7,9846998.85,0,0,0,0][i],
+  focus:['Chickenjoy','Burger Steak','Strawberry Sundae','Supermeal','Burger Steak Supreme','Gamejoy','Vm Spaghetti','Spicy Cjoy','NA','NA','NA','NA'][i],
+  tc:[1017.71,0,1070.84,1060.97,1068.6,1078,1029,0,0,0,0,0][i],
+  qty:[595,610,588,640,675,1163,3141,0,0,0,0,0][i],
+  salesQty:[20,21,19,22,23,38,101,0,0,0,0,0][i],
+  price:[95,95,95,95,95,169,0,0,0,0,0][i],
+  days:[31,28,31,30,31,30,31,31,30,31,30,31][i],
+  blockedDays:[0,0,0,0,0,0,0,0,0,0,0,0][i],
+  partySlotsPerDay:[5,5,5,5,5,5,5,5,5,5,5,5][i],
+  weTY:[20,8,24,16,24,20,23,30,0,0,0,0][i],
+  wdTY:[6,6,3,14,5,6,5,3,0,0,0,0][i],
+  weLY:[17,14,20,11,14,16,20,28,0,0,0,0][i],
+  wdLY:[9,6,4,6,4,8,7,6,0,0,0,0][i]
+}));
+
+const tableBody = document.getElementById("tableBody");
+const factorGrid = document.getElementById("factorGrid");
+const monthReportBanner = document.getElementById("monthReportBanner");
+const focusBanner = document.getElementById("focusBanner");
+const tablePanel = document.getElementById("tablePanel");
+const dashboardTable = document.getElementById("dashboardTable");
+
+let currentFocus = null;
+
+// 2026 PARTY CALENDAR CAPACITY
+// Every Friday, Saturday and Sunday has 5 available party slots by default.
+// The calendar is generated from the actual 2026 dates, so the denominator
+// changes automatically for every month.
+function getPartyCalendar2026(monthIndex){
+  const year = 2026;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  let fridayDays = 0, saturdayDays = 0, sundayDays = 0;
+
+  for(let day = 1; day <= daysInMonth; day++){
+    const weekday = new Date(year, monthIndex, day).getDay();
+    if(weekday === 5) fridayDays++;
+    else if(weekday === 6) saturdayDays++;
+    else if(weekday === 0) sundayDays++;
+  }
+
+  return {
+    fridayDays,
+    saturdayDays,
+    sundayDays,
+    partyDays: fridayDays + saturdayDays + sundayDays
+  };
+}
+
+
+function buildTable(){
+  tableBody.innerHTML = "";
+  factorGrid.innerHTML = "";
+
+  data.forEach((d,i)=>{
+    const pty = d.weTY + d.wdTY;
+    const ply = d.weLY + d.wdLY;
+
+    tableBody.innerHTML += `
+      <tr id="row${i}">
+        <td class="sticky-month col-month">${d.month}</td>
+
+        <td class="yellow col-sales"><input id="sTY${i}" value="${d.salesTY}" oninput="updateDashboard()"></td>
+        <td class="yellow col-sales"><input id="sLY${i}" value="${d.salesLY}" oninput="updateDashboard()"></td>
+        <td class="yellow col-sales" id="growth${i}"></td>
+
+        <td class="pinkSec col-party" id="pTY${i}">${pty}</td>
+        <td class="pinkSec col-party" id="pLY${i}">${ply}</td>
+        <td class="pinkSec col-party" id="partyPercent${i}"></td>
+
+        <td class="purple col-party"><input id="weTY${i}" value="${d.weTY}" oninput="updateDashboard()"></td>
+        <td class="purple col-party"><input id="wdTY${i}" value="${d.wdTY}" oninput="updateDashboard()"></td>
+        <td class="purple col-party"><input id="weLY${i}" value="${d.weLY}" oninput="updateDashboard()"></td>
+        <td class="purple col-party"><input id="wdLY${i}" value="${d.wdLY}" oninput="updateDashboard()"></td>
+        <td class="pinkSec col-party" id="friDays${i}"></td>
+        <td class="pinkSec col-party" id="satDays${i}"></td>
+        <td class="pinkSec col-party" id="sunDays${i}"></td>
+        <td class="pinkSec col-party" id="partyDays${i}"></td>
+        <td class="purple col-party"><input id="partySlots${i}" type="number" min="0" value="${d.partySlotsPerDay}" oninput="updateDashboard()"></td>
+        <td class="pinkSec col-party" id="availableSlots${i}"></td>
+         <td class="pinkSec col-party" id="friSlots${i}"></td>
+         <td class="pinkSec col-party" id="satSlots${i}"></td>
+         <td class="pinkSec col-party" id="sunSlots${i}"></td>
+
+        <td class="greenSec col-dt"><input id="dtTY${i}" value="${d.dtTY}" oninput="updateDashboard()"></td>
+        <td class="greenSec col-dt"><input id="dtLY${i}" value="${d.dtLY}" oninput="updateDashboard()"></td>
+        <td class="greenSec col-dt" id="dtGrowth${i}"></td>
+
+        <td class="blue col-ops"><input class="focus-input" id="focus${i}" value="${d.focus}"></td>
+        <td class="orange col-ops"><input id="tc${i}" value="${d.tc}" oninput="updateDashboard()"></td>
+        <td class="orange col-ops"><input id="qty${i}" value="${d.qty}" oninput="updateDashboard()"></td>
+        <td class="orange col-ops"><input id="salesQty${i}" value="${d.salesQty}" oninput="updateDashboard()"></td>
+        <td class="orange col-ops"><input id="price${i}" value="${d.price}" oninput="updateDashboard()"></td>
+        <td class="orange col-ops"><input id="days${i}" value="${d.days}" oninput="updateDashboard()"></td>
+        <td class="orange col-ops"><input id="blockedDays${i}" value="${d.blockedDays}" oninput="updateDashboard()"></td>
+        <td class="orange col-ops" id="occupancy${i}"></td>
+        <td class="orange col-ops" id="sr${i}"></td>
+        <td class="orange col-ops" id="salesFormula${i}"></td>
+      </tr>
+    `;
+
+    factorGrid.innerHTML += `
+      <div class="factor-box" id="factorBox${i}">
+        <label for="factor${i}">${fullMonths[i]}</label>
+        <textarea id="factor${i}" placeholder="Type factors affecting sales for ${fullMonths[i]}..."></textarea>
+      </div>
+    `;
+  });
+
+  loadNotes();
+}
+
+function num(id){
+  return Number(document.getElementById(id).value) || 0;
+}
+
+function getTrendHTML(value,label="vs LY"){
+  if(value > 0){
+    return `<span class="trend-up">▲ ${value.toFixed(1)}% ${label}</span>`;
+  }else if(value < 0){
+    return `<span class="trend-down">▼ ${Math.abs(value).toFixed(1)}% ${label}</span>`;
+  }else{
+    return `<span class="trend-flat">• 0.0% ${label}</span>`;
+  }
+}
+
+function animateValue(el,start,end,duration,prefix='',suffix='',decimals=0){
+  const range = end - start;
+  const startTime = performance.now();
+  function update(currentTime){
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = start + range * progress;
+    el.textContent = prefix + formatter.format(Number(current.toFixed(decimals))) + suffix;
+    if(progress < 1){
+      requestAnimationFrame(update);
+    }else{
+      el.textContent = prefix + formatter.format(Number(end.toFixed(decimals))) + suffix;
+    }
+  }
+  requestAnimationFrame(update);
+}
+
+function animatePercent(el,start,end,duration){
+  const range = end - start;
+  const startTime = performance.now();
+  function update(currentTime){
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const current = start + range * progress;
+    el.textContent = current.toFixed(1) + "%";
+    if(progress < 1){
+      requestAnimationFrame(update);
+    }else{
+      el.textContent = end.toFixed(1) + "%";
+    }
+  }
+  requestAnimationFrame(update);
+}
+
+const chartOptions = {
+  responsive:true,
+  maintainAspectRatio:false,
+  plugins:{ legend:{display:true} }
+};
+
+const salesChart = new Chart(document.getElementById('salesChart'),{
+  type:'line',
+  data:{ labels:[], datasets:[
+    { label:'TY Sales', data:[], borderColor:'#d6001c', backgroundColor:'#d6001c', tension:.35 },
+    { label:'LY Sales', data:[], borderColor:'#6c757d', backgroundColor:'#6c757d', borderDash:[6,6], tension:.35 }
+  ]},
+  options:chartOptions
+});
+
+const dtChart = new Chart(document.getElementById('dtChart'),{
+  type:'bar',
+  data:{ labels:[], datasets:[
+    { label:'Dine/Take TY', data:[], backgroundColor:'#20c997' },
+    { label:'Dine/Take LY', data:[], backgroundColor:'#adb5bd' }
+  ]},
+  options:chartOptions
+});
+
+const partyChart = new Chart(document.getElementById('partyChart'),{
+  type:'bar',
+  data:{ labels:[], datasets:[
+    { label:'Party TY', data:[], backgroundColor:'#9333ea' },
+    { label:'Party LY', data:[], backgroundColor:'#999' }
+  ]},
+  options:chartOptions
+});
+
+const srChart = new Chart(document.getElementById('srChart'),{
+  type:'line',
+  data:{ labels:[], datasets:[
+    { label:'SR %', data:[], borderColor:'#198754', backgroundColor:'#198754', tension:.35 }
+  ]},
+  options:chartOptions
+});
+
+let firstLoad = true;
+
+function updateDashboard(){
+  let totalTY = 0, totalLY = 0, totalDTTY = 0, totalDTLY = 0, totalFormula = 0, totalParty = 0, totalPartyLY = 0;
+  const selectedMonth = document.getElementById("monthFilter").value;
+
+  let salesTYArr=[], salesLYArr=[], dtTYArr=[], dtLYArr=[], partyTYArr=[], partyLYArr=[], srArr=[], chartLabels=[];
+
+  if(selectedMonth === "ALL"){
+    monthReportBanner.style.display = "none";
+  }else{
+    monthReportBanner.style.display = "block";
+    monthReportBanner.textContent = `📌 Monthly Report Mode: ${fullMonths[Number(selectedMonth)]}`;
+  }
+
+  for(let i=0;i<12;i++){
+    const row = document.getElementById("row"+i);
+    const factorBox = document.getElementById("factorBox"+i);
+    const showRow = (selectedMonth === "ALL" || Number(selectedMonth) === i);
+
+    row.style.display = showRow ? "" : "none";
+    factorBox.style.display = showRow ? "" : (selectedMonth === "ALL" ? "" : "none");
+
+    let st = num("sTY"+i),
+        sl = num("sLY"+i),
+        dtty = num("dtTY"+i),
+        dtly = num("dtLY"+i);
+
+    let tc = num("tc"+i),
+        qty = num("qty"+i),
+        salesQty = num("salesQty"+i),
+        price = num("price"+i),
+        days = num("days"+i),
+        blockedDays = num("blockedDays"+i);
+
+    let weT = num("weTY"+i),
+        wdT = num("wdTY"+i),
+        weL = num("weLY"+i),
+        wdL = num("wdLY"+i),
+        partySlots = num("partySlots"+i);
+
+    const calendar = getPartyCalendar2026(i);
+    const fridaySlots = calendar.fridayDays * partySlots;
+    const saturdaySlots = calendar.saturdayDays * partySlots;
+    const sundaySlots = calendar.sundayDays * partySlots;
+    const partyDays = calendar.partyDays;
+    const availableSlots = fridaySlots + saturdaySlots + sundaySlots;
+
+    let pty = weT + wdT;
+    let ply = weL + wdL;
+
+    document.getElementById("pTY"+i).innerText = pty;
+    document.getElementById("pLY"+i).innerText = ply;
+
+    let growth = sl===0 ? 0 : ((st-sl)/sl)*100;
+    document.getElementById("growth"+i).innerHTML =
+      growth >= 0 ? `<span class="good">${growth.toFixed(1)}%</span>` : `<span class="bad">${growth.toFixed(1)}%</span>`;
+
+    let dtGrowth = dtly===0 ? 0 : ((dtty-dtly)/dtly)*100;
+    document.getElementById("dtGrowth"+i).innerHTML =
+      dtGrowth >= 0 ? `<span class="good">${dtGrowth.toFixed(1)}%</span>` : `<span class="bad">${dtGrowth.toFixed(1)}%</span>`;
+
+    let partyGrowth = ply===0 ? 0 : ((pty-ply)/ply)*100;
+    document.getElementById("partyPercent"+i).innerHTML =
+      partyGrowth >= 0 ? `<span class="good">${partyGrowth.toFixed(1)}%</span>` : `<span class="bad">${partyGrowth.toFixed(1)}%</span>`;
+
+    // PARTY OCCUPANCY = Actual Parties / ((Friday + Saturday + Sunday) Party Days x Slots Per Day) x 100
+    // IMPORTANT: availableSlots is rebuilt from the 2026 calendar on every update.
+    // It can never remain at a hard-coded 50.
+    let occupancy = availableSlots === 0 ? 0 : (pty / availableSlots) * 100;
+    document.getElementById("friDays"+i).innerText = calendar.fridayDays;
+    document.getElementById("satDays"+i).innerText = calendar.saturdayDays;
+    document.getElementById("sunDays"+i).innerText = calendar.sundayDays;
+    document.getElementById("partyDays"+i).innerText = partyDays;
+    document.getElementById("availableSlots"+i).innerText = availableSlots;
+     document.getElementById("friSlots"+i).innerText = fridaySlots;
+     document.getElementById("satSlots"+i).innerText = saturdaySlots;
+     document.getElementById("sunSlots"+i).innerText = sundaySlots;
+    document.getElementById("occupancy"+i).innerHTML =
+      `<span class="${occupancy >= 50 ? 'good' : 'bad'}">${occupancy.toFixed(2)}%</span>`;
+
+    /* FIXED SR FORMULA
+       Total Qty Sold / Total TC / Number of Days * 100
+       = qty / tc / days * 100
+       = qty / (tc * days) * 100
+    */
+    let sr = (tc === 0 || days === 0) ? 0 : (qty / tc / days) * 100;
+    document.getElementById("sr"+i).innerHTML =
+      `<span class="${sr>=40 ? 'good' : 'bad'}">${sr.toFixed(2)}%</span>`;
+
+    let salesFormula = ((salesQty * price) / 1.12 * days) || 0;
+    document.getElementById("salesFormula"+i).innerHTML =
+      `<span class="good">₱${formatter.format(Math.round(salesFormula))}</span>`;
+
+    if(showRow){
+      totalTY += st;
+      totalLY += sl;
+      totalDTTY += dtty;
+      totalDTLY += dtly;
+      totalFormula += salesFormula;
+      totalParty += pty;
+      totalPartyLY += ply;
+
+      salesTYArr.push(st);
+      salesLYArr.push(sl);
+      dtTYArr.push(dtty);
+      dtLYArr.push(dtly);
+      partyTYArr.push(pty);
+      partyLYArr.push(ply);
+      srArr.push(Number(sr.toFixed(2)));
+      chartLabels.push(months[i]);
+    }
+  }
+
+  const totalGrowth = totalLY===0 ? 0 : ((totalTY-totalLY)/totalLY)*100;
+  const totalDTGrowth = totalDTLY===0 ? 0 : ((totalDTTY-totalDTLY)/totalDTLY)*100;
+  const totalPartyGrowth = totalPartyLY===0 ? 0 : ((totalParty-totalPartyLY)/totalPartyLY)*100;
+
+  if(firstLoad){
+    animateValue(document.getElementById("salesTY"), 0, totalTY, 1000, "₱");
+    animateValue(document.getElementById("salesLY"), 0, totalLY, 1000, "₱");
+    animatePercent(document.getElementById("totalGrowth"), 0, totalGrowth, 1000);
+    animateValue(document.getElementById("dtTYTotal"), 0, totalDTTY, 1000, "₱");
+    animateValue(document.getElementById("dtLYTotal"), 0, totalDTLY, 1000, "₱");
+    animatePercent(document.getElementById("dtGrowthTotal"), 0, totalDTGrowth, 1000);
+    animateValue(document.getElementById("partyTYCard"), 0, totalParty, 1000, "");
+    animateValue(document.getElementById("formulaTotal"), 0, Math.round(totalFormula), 1000, "₱");
+    firstLoad = false;
+  }else{
+    document.getElementById("salesTY").innerText = "₱" + formatter.format(totalTY);
+    document.getElementById("salesLY").innerText = "₱" + formatter.format(totalLY);
+    document.getElementById("totalGrowth").innerText = totalGrowth.toFixed(1) + "%";
+    document.getElementById("dtTYTotal").innerText = "₱" + formatter.format(totalDTTY);
+    document.getElementById("dtLYTotal").innerText = "₱" + formatter.format(totalDTLY);
+    document.getElementById("dtGrowthTotal").innerText = totalDTGrowth.toFixed(1) + "%";
+    document.getElementById("partyTYCard").innerText = formatter.format(totalParty);
+    document.getElementById("formulaTotal").innerText = "₱" + formatter.format(Math.round(totalFormula));
+  }
+
+  document.getElementById("salesTYSub").innerHTML = getTrendHTML(totalGrowth,"vs LY");
+  document.getElementById("totalGrowthTrend").innerHTML = getTrendHTML(totalGrowth,"overall");
+  document.getElementById("dtTYSub").innerHTML = getTrendHTML(totalDTGrowth,"vs LY");
+  document.getElementById("dtGrowthTrend").innerHTML = getTrendHTML(totalDTGrowth,"overall");
+  document.getElementById("partySub").innerHTML = getTrendHTML(totalPartyGrowth,"vs LY");
+
+  salesChart.data.labels = chartLabels;
+  salesChart.data.datasets[0].data = salesTYArr;
+  salesChart.data.datasets[1].data = salesLYArr;
+  salesChart.update();
+
+  dtChart.data.labels = chartLabels;
+  dtChart.data.datasets[0].data = dtTYArr;
+  dtChart.data.datasets[1].data = dtLYArr;
+  dtChart.update();
+
+  partyChart.data.labels = chartLabels;
+  partyChart.data.datasets[0].data = partyTYArr;
+  partyChart.data.datasets[1].data = partyLYArr;
+  partyChart.update();
+
+  srChart.data.labels = chartLabels;
+  srChart.data.datasets[0].data = srArr;
+  srChart.update();
+
+  if(currentFocus){
+    applyFocus(currentFocus,false);
+  }
+}
+
+let summaryImagesData = [];
+
+function renderSummaryImages(){
+  const box = document.getElementById("summaryImagePreview");
+  if(!box) return;
+  box.innerHTML = "";
+  summaryImagesData.forEach((item,index)=>{
+    const wrap = document.createElement("div");
+    wrap.className = "summary-image-item";
+    const img = document.createElement("img");
+    img.src = item.data; img.alt = item.name || "Supporting image";
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "summary-image-remove"; btn.title = "Remove image"; btn.textContent = "×";
+    btn.onclick = ()=>{ summaryImagesData.splice(index,1); renderSummaryImages(); saveNotes(); };
+    const name = document.createElement("div"); name.className="summary-image-name"; name.textContent=item.name||"Image";
+    wrap.append(img,btn,name); box.appendChild(wrap);
+  });
+}
+
+function handleSummaryImages(files){
+  Array.from(files || []).forEach(file=>{
+    if(!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = e=>{ summaryImagesData.push({name:file.name,data:e.target.result}); renderSummaryImages(); saveNotes(); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openTYPresentation(){
+  const input=document.getElementById("tyPresentationLink");
+  const status=document.getElementById("tyPresentationStatus");
+  const raw=(input?.value||"").trim();
+  if(!raw){status.textContent="Please paste the TY presentation link first.";status.style.color="#c00";input?.focus();return;}
+  let url; try{url=new URL(raw);}catch(e){status.textContent="Please enter a valid link starting with https://";status.style.color="#c00";return;}
+  if(!/^https?:$/.test(url.protocol)){status.textContent="Only http:// or https:// links are supported.";status.style.color="#c00";return;}
+  window.open(url.href,"_blank","noopener,noreferrer");
+  status.textContent="TY presentation link opened.";status.style.color="#198754";
+}
+
+let savedSummaryRange = null;
+
+function saveSummarySelection(){
+  const editor=document.getElementById("summaryAction");
+  const selection=window.getSelection();
+  if(editor && selection && selection.rangeCount && editor.contains(selection.anchorNode)){
+    savedSummaryRange=selection.getRangeAt(0).cloneRange();
+  }
+}
+
+function restoreSummarySelection(){
+  const editor=document.getElementById("summaryAction");
+  if(!editor) return;
+  editor.focus();
+  const selection=window.getSelection();
+  if(savedSummaryRange){
+    selection.removeAllRanges();
+    selection.addRange(savedSummaryRange);
+  }
+}
+
+function keepSummarySelection(event){
+  event.preventDefault();
+  saveSummarySelection();
+}
+
+function formatSummary(command){
+  restoreSummarySelection();
+  document.execCommand(command,false,null);
+  saveSummarySelection();
+  saveNotes();
+}
+
+function applySummaryFont(){
+  const font=document.getElementById("summaryFont").value;
+  restoreSummarySelection();
+  document.execCommand("fontName",false,font);
+  // Normalize the generated FONT tags so the selected font applies reliably.
+  document.querySelectorAll("#summaryAction font[face]").forEach(el=>{
+    el.style.fontFamily=el.getAttribute("face");
+  });
+  saveSummarySelection();
+  saveNotes();
+}
+
+function applySummaryFontSize(){
+  const size=document.getElementById("summaryFontSize").value;
+  restoreSummarySelection();
+  document.execCommand("fontSize",false,"3");
+  const editor=document.getElementById("summaryAction");
+  const selection=window.getSelection();
+  const range=selection && selection.rangeCount ? selection.getRangeAt(0) : null;
+  if(editor && range){
+    const span=document.createElement("span");
+    span.style.fontSize=size;
+    try{
+      const contents=range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      range.selectNodeContents(span);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }catch(e){}
+  }
+  saveSummarySelection();
+  saveNotes();
+}
+
+function insertDashItem(){
+  restoreSummarySelection();
+  document.execCommand("insertHTML",false,"— ");
+  saveSummarySelection();
+  saveNotes();
+}
+
+function setupNoteAutosave(){
+  for(let i=0;i<12;i++){
+    const el = document.getElementById(`factor${i}`);
+    if(el) el.addEventListener("input", saveNotes);
+  }
+  const summary = document.getElementById("summaryAction");
+  if(summary){
+    summary.addEventListener("input", saveNotes);
+    summary.addEventListener("keyup", saveSummarySelection);
+    summary.addEventListener("mouseup", saveSummarySelection);
+    summary.addEventListener("focus", saveSummarySelection);
+  }
+  const imageInput=document.getElementById("summaryImages");
+  if(imageInput) imageInput.addEventListener("change",e=>{handleSummaryImages(e.target.files);e.target.value="";});
+  const presentation=document.getElementById("tyPresentationLink");
+  if(presentation) presentation.addEventListener("input", saveNotes);
+}
+
+function saveNotes(){
+  const notes = {};
+  for(let i=0;i<12;i++){
+    const el = document.getElementById(`factor${i}`);
+    notes[`factor${i}`] = el ? el.value : "";
+  }
+  notes.summaryAction = document.getElementById("summaryAction").innerHTML || "";
+  notes.tyPresentationLink = document.getElementById("tyPresentationLink")?.value || "";
+  notes.summaryImages = summaryImagesData;
+  try{ localStorage.setItem("jkp_sales_notes", JSON.stringify(notes)); }
+  catch(e){ const fallback={...notes}; delete fallback.summaryImages; localStorage.setItem("jkp_sales_notes", JSON.stringify(fallback)); }
+}
+
+function loadNotes(){
+  const raw = localStorage.getItem("jkp_sales_notes");
+  if(!raw) return;
+  try{
+    const notes = JSON.parse(raw);
+    for(let i=0;i<12;i++){
+      const el = document.getElementById(`factor${i}`);
+      if(el && notes[`factor${i}`] !== undefined) el.value = notes[`factor${i}`];
+    }
+    if(notes.summaryAction !== undefined){
+      const editor=document.getElementById("summaryAction");
+      // Supports both the new rich-text format and older plain-text saved notes.
+      if(editor) editor.innerHTML = notes.summaryAction;
+    }
+    if(notes.tyPresentationLink !== undefined) document.getElementById("tyPresentationLink").value = notes.tyPresentationLink;
+    if(Array.isArray(notes.summaryImages)){ summaryImagesData=notes.summaryImages; renderSummaryImages(); }
+  }catch(e){}
+}
+
+function clearSavedNotes(){
+  if(confirm("Clear all saved factor notes and summary/action plan?")){
+    localStorage.removeItem("jkp_sales_notes");
+    for(let i=0;i<12;i++){
+      const el = document.getElementById(`factor${i}`);
+      if(el) el.value = "";
+    }
+    document.getElementById("summaryAction").innerHTML = "";
+    const link=document.getElementById("tyPresentationLink"); if(link) link.value="";
+    summaryImagesData=[]; renderSummaryImages();
+  }
+}
+
+function printNotes(){ window.print(); }
+
+function exportToExcel(){
+  const rows = [];
+
+  for(let i=0;i<12;i++){
+    const st = num("sTY"+i), sl = num("sLY"+i);
+    const overallGrowth = sl===0 ? 0 : ((st-sl)/sl)*100;
+
+    const dtty = num("dtTY"+i), dtly = num("dtLY"+i);
+    const dtGrowth = dtly===0 ? 0 : ((dtty-dtly)/dtly)*100;
+
+    const tc = num("tc"+i),
+          qty = num("qty"+i),
+          salesQty = num("salesQty"+i),
+          price = num("price"+i),
+          days = num("days"+i),
+          blockedDays = num("blockedDays"+i);
+
+    const weTY = num("weTY"+i), wdTY = num("wdTY"+i), weLY = num("weLY"+i), wdLY = num("wdLY"+i);
+    const partySlots = num("partySlots"+i);
+    const calendar = getPartyCalendar2026(i);
+    const fridaySlots = calendar.fridayDays * partySlots;
+    const saturdaySlots = calendar.saturdayDays * partySlots;
+    const sundaySlots = calendar.sundayDays * partySlots;
+    const partyDays = calendar.partyDays;
+    const availableSlots = fridaySlots + saturdaySlots + sundaySlots;
+    const pty = weTY + wdTY;
+    const ply = weLY + wdLY;
+    const partyGrowth = ply===0 ? 0 : ((pty-ply)/ply)*100;
+
+    const occupancy = availableSlots === 0 ? 0 : (pty / availableSlots) * 100;
+
+    /* FIXED SR FORMULA FOR EXCEL TOO */
+    const sr = (tc === 0 || days === 0) ? 0 : (qty / tc / days) * 100;
+
+    const salesFormula = ((salesQty * price) / 1.12 * days) || 0;
+
+    rows.push({
+      Month: fullMonths[i],
+      "TY Sales": st,
+      "LY Sales": sl,
+      "Sales Growth %": Number(overallGrowth.toFixed(2)),
+      "Party TY": pty,
+      "Party LY": ply,
+      "Party Growth %": Number(partyGrowth.toFixed(2)),
+      "WE TY": weTY,
+      "WD TY": wdTY,
+      "WE LY": weLY,
+      "WD LY": wdLY,
+      "Dine/Take TY": dtty,
+      "Dine/Take LY": dtly,
+      "Dine/Take Growth %": Number(dtGrowth.toFixed(2)),
+      "Focus SS Target": document.getElementById(`focus${i}`)?.value || "",
+      "TC": tc,
+      "Total Qty Sold": qty,
+      "Sales Qty / Day": salesQty,
+      "Price": price,
+      "No. of Days": days,
+      "Blocked Days": blockedDays,
+      "Friday Days": calendar.fridayDays,
+      "Saturday Days": calendar.saturdayDays,
+      "Sunday Days": calendar.sundayDays,
+      "Party Days": partyDays,
+      "Party Slots / Day": partySlots,
+      "Available Party Slots": availableSlots,
+      "Friday Available Slots": fridaySlots,
+      "Saturday Available Slots": saturdaySlots,
+      "Sunday Available Slots": sundaySlots,
+      "Party Occupancy %": Number(occupancy.toFixed(2)),
+      "SR %": Number(sr.toFixed(2)),
+      "Sales Amount": Math.round(salesFormula),
+      "Factors Affecting Sales": document.getElementById(`factor${i}`)?.value || ""
+    });
+  }
+
+  const summaryText = document.getElementById("summaryAction").innerText || "";
+  const presentationLink = document.getElementById("tyPresentationLink")?.value || "";
+  const imageNames = summaryImagesData.map(x=>x.name).join("; ");
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Dashboard Data");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(fullMonths.map((m,i)=>( {
+    Month:m,
+    "Factors Affecting Sales": document.getElementById(`factor${i}`)?.value || ""
+  }))), "Monthly Factors");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
+    "Summary / Action Plan": summaryText,
+    "TY Presentation Link": presentationLink,
+    "Supporting Images": imageNames
+  }]), "Summary Action Plan");
+  XLSX.writeFile(wb, "JKP_Sales_Performance_Dashboard.xlsx");
+}
+
+function resetFilter(){
+  document.getElementById("monthFilter").value = "ALL";
+  updateDashboard();
+}
+
+const focusConfig = {
+  sales: {
+    label: '📘 SALES REPORT VIEW — TY Sales vs LY Sales vs Growth',
+    bannerClass: 'focus-sales',
+    keep: ['col-month','col-sales'],
+    highlight: 'focus-sales-col',
+    chart: 'salesChartBox',
+    cardIds: ['cardSalesTY','cardSalesLY','cardSalesGrowth']
+  },
+  dt: {
+    label: '🍔 DINE-IN / TAKE-OUT REPORT VIEW — TY vs LY vs Growth',
+    bannerClass: 'focus-dt',
+    keep: ['col-month','col-dt'],
+    highlight: 'focus-dt-col',
+    chart: 'dtChartBox',
+    cardIds: ['cardDtTY','cardDtLY','cardDtGrowth']
+  },
+  party: {
+    label: '🎉 PARTY REPORT VIEW — Party TY / LY / Growth + WE / WD + Fri/Sat/Sun Capacity',
+    bannerClass: 'focus-party',
+    keep: ['col-month','col-party'],
+    highlight: 'focus-party-col',
+    chart: 'partyChartBox',
+    cardIds: ['cardParty']
+  },
+  ops: {
+    label: '🧾 OPERATIONS REPORT VIEW — Focus / TC / Qty / Blocked Days / Occupancy / SR / Sales Amount',
+    bannerClass: 'focus-ops',
+    keep: ['col-month','col-ops'],
+    highlight: 'focus-ops-col',
+    chart: 'srChartBox',
+    cardIds: ['cardAmount']
+  }
+};
+
+function focusSection(type){
+  if(currentFocus === type){
+    resetFocus();
+    return;
+  }
+  applyFocus(type,true);
+}
+
+function applyFocus(type,scrollToArea=true){
+  currentFocus = type;
+  const cfg = focusConfig[type];
+  if(!cfg) return;
+
+  focusBanner.className = 'focus-banner ' + cfg.bannerClass;
+  focusBanner.style.display = 'block';
+  focusBanner.textContent = cfg.label + ' — click the same KPI card again or press "Reset Focus" to return to the full dashboard.';
+
+  document.querySelectorAll('.card').forEach(card=>card.classList.remove('active-focus'));
+  cfg.cardIds.forEach(id=>{
+    const card = document.getElementById(id);
+    if(card) card.classList.add('active-focus');
+  });
+
+  dashboardTable.classList.add('report-table');
+
+  document.querySelectorAll('#dashboardTable th, #dashboardTable td').forEach(el=>{
+    el.classList.remove('dim-col','focus-col','focus-sales-col','focus-dt-col','focus-party-col','focus-ops-col');
+  });
+
+  document.querySelectorAll('#dashboardTable th, #dashboardTable td').forEach(el=>{
+    if(!el.classList.contains('col-month')){
+      el.classList.add('dim-col');
+    }
+  });
+
+  cfg.keep.forEach(group=>{
+    document.querySelectorAll('.' + group).forEach(el=>{
+      el.classList.remove('dim-col');
+      if(group !== 'col-month'){
+        el.classList.add('focus-col', cfg.highlight);
+      }
+    });
+  });
+
+  document.querySelectorAll('#tableBody tr').forEach(row=>{
+    if(row.style.display !== 'none'){
+      row.classList.add('report-row');
+    }
+  });
+
+  const chartBoxes = ['salesChartBox','dtChartBox','partyChartBox','srChartBox'];
+  chartBoxes.forEach(id=>{
+    const box = document.getElementById(id);
+    if(!box) return;
+    if(id === cfg.chart){
+      box.classList.remove('dim-chart');
+      box.classList.add('focus-chart');
+    }else{
+      box.classList.remove('focus-chart');
+      box.classList.add('dim-chart');
+    }
+  });
+
+  if(scrollToArea){
+    tablePanel.scrollIntoView({behavior:'smooth', block:'start'});
+    setTimeout(()=>{
+      tablePanel.scrollLeft = 0;
+      document.getElementById(cfg.chart).scrollIntoView({behavior:'smooth', block:'nearest'});
+    },250);
+  }
+}
+
+function resetFocus(){
+  currentFocus = null;
+
+  focusBanner.style.display = 'none';
+  focusBanner.className = 'focus-banner';
+
+  document.querySelectorAll('.card').forEach(card=>card.classList.remove('active-focus'));
+
+  dashboardTable.classList.remove('report-table');
+
+  document.querySelectorAll('#dashboardTable th, #dashboardTable td').forEach(el=>{
+    el.classList.remove('dim-col','focus-col','focus-sales-col','focus-dt-col','focus-party-col','focus-ops-col');
+  });
+
+  document.querySelectorAll('#tableBody tr').forEach(row=>row.classList.remove('report-row'));
+
+  ['salesChartBox','dtChartBox','partyChartBox','srChartBox'].forEach(id=>{
+    const box = document.getElementById(id);
+    if(box){
+      box.classList.remove('focus-chart','dim-chart');
+    }
+  });
+}
+
+buildTable();
+setupNoteAutosave();
+updateDashboard();
+</script>
+</body>
+</html>
